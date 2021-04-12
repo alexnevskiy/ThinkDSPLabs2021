@@ -1,0 +1,409 @@
+\documentclass[a4paper,12pt]{report}
+
+\usepackage{cmap}
+\usepackage[T2A]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[english,russian]{babel}
+\usepackage{listings}
+\usepackage{amsmath}
+\usepackage{float}
+\usepackage{csquotes}
+\usepackage{mathtools}
+\usepackage{hyphenat}
+\usepackage{amsfonts}
+\usepackage{upgreek}
+
+\usepackage{xcolor}
+\usepackage{hyperref}
+
+\usepackage{graphicx}
+\graphicspath{ {./images/} }
+
+\definecolor{dkgreen}{rgb}{0,0.6,0}
+\definecolor{gray}{rgb}{0.5,0.5,0.5}
+\definecolor{mauve}{rgb}{0.58,0,0.82}
+
+\lstset{
+    language=Python,                 % выбор языка для подсветки (здесь это С)
+    basicstyle=\small\sffamily, % размер и начертание шрифта для подсветки кода
+    numbers=left,               % где поставить нумерацию строк (слева\справа)
+    numberstyle=\tiny,           % размер шрифта для номеров строк
+    stepnumber=1,                   % размер шага между двумя номерами строк
+    numbersep=5pt,                % как далеко отстоят номера строк от подсвечиваемого кода
+    aboveskip=3mm,
+    belowskip=3mm,
+    showstringspaces=false,
+    columns=flexible,
+    captionpos=b, 
+    basicstyle={\small\ttfamily},
+    numbers=left,
+    numberstyle=\tiny\color{gray},
+    keywordstyle=\color{blue},
+    commentstyle=\color{mauve},
+    stringstyle=\color{dkgreen},
+    breaklines=true,
+    breakatwhitespace=true,
+    tabsize=3
+}
+
+\title{Лабораторная работа №10\\Линейные стационарные системы}
+\author{Кобыжев Александр}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+\tableofcontents
+\listoffigures
+\lstlistoflistings
+
+\maketitle
+
+\chapter{Упражнение 10.1}
+
+Усечём оба сигнала до $2^{16}$ элементов, а затем обнуляем их до $2^{17}$. Использование степени двойки делает алгоритм ДПФ наиболее эффективным.
+
+Вот импульсный отклик:
+
+\begin{lstlisting}[caption=Усечение сигнала]
+response = thinkdsp.read_wave('180960__kleeb__gunshot.wav')
+
+start = 0.12
+response = response.segment(start=start)
+response.shift(-start)
+
+response.truncate(2**16)
+response.zero_pad(2**17)
+
+response.normalize()
+response.plot()
+thinkplot.config(xlabel='Time (s)', ylim=[-1.05, 1.05])
+\end{lstlisting}
+
+\begin{figure}[H]
+        \centering
+        \includegraphics[width=0.75\textwidth]{lab10_fig1_1.png}
+        \caption{Визуализация сигнала}
+        \label{fig:lab10_fig1_1}
+\end{figure}
+
+А теперь составим спектр:
+
+\begin{lstlisting}[caption=Спектр сигнала]
+transfer = response.make_spectrum()
+transfer.plot()
+thinkplot.config(xlabel='Frequency (Hz)', ylabel='Amplitude')
+\end{lstlisting}
+
+\begin{figure}[H]
+        \centering
+        \includegraphics[width=0.75\textwidth]{lab10_fig1_2.png}
+        \caption{Спектр сигнала}
+        \label{fig:lab10_fig1_2}
+\end{figure}
+
+Рассмотрим другой сигнал.
+
+\begin{lstlisting}[caption=Усечение сигнала]
+violin = thinkdsp.read_wave('92002__jcveliz__violin-origional.wav')
+
+start = 0.11
+violin = violin.segment(start=start)
+violin.shift(-start)
+
+violin.truncate(2**16)
+violin.zero_pad(2**17)
+
+violin.normalize()
+violin.plot()
+thinkplot.config(xlabel='Time (s)', ylim=[-1.05, 1.05])
+\end{lstlisting}
+
+\begin{figure}[H]
+        \centering
+        \includegraphics[width=0.75\textwidth]{lab10_fig1_3.png}
+        \caption{Визуализация сигнала}
+        \label{fig:lab10_fig1_3}
+\end{figure}
+
+Составим спектр:
+
+\begin{lstlisting}[caption=Спектр сигнала]
+spectrum = violin.make_spectrum()
+\end{lstlisting}
+
+Теперь умножим ДПФ сигнала на передаточную функцию и преобразуем обратно в волну:
+
+\begin{lstlisting}[caption=Совмещение сигналов]
+output = (spectrum * transfer).make_wave()
+output.normalize()
+\end{lstlisting}
+
+Визуализируем полученный сигнал.
+
+\begin{lstlisting}[caption=Визуализация сигнала]
+output.plot()
+\end{lstlisting}
+
+\begin{figure}[H]
+        \centering
+        \includegraphics[width=0.75\textwidth]{lab10_fig1_4.png}
+        \caption{Визуализация сигнала}
+        \label{fig:lab10_fig1_4}
+\end{figure}
+
+Результат не выглядит так, как будто он оборачивается вокруг:
+
+\begin{lstlisting}[caption=Прослушивание сигнала]
+output.make_audio()
+\end{lstlisting}
+
+Лишнюю ноту в начале не слышно. Мы должны получить такие же результаты от \texttt{np.convolve} и \texttt{scipy.signal.fftconvolve}.
+
+Сначала избавимся от нулевого отступа:
+
+\begin{lstlisting}[caption=Избавление от нулевого отступа]
+response.truncate(2**16)
+response.plot()
+\end{lstlisting}
+
+\begin{figure}[H]
+        \centering
+        \includegraphics[width=0.75\textwidth]{lab10_fig1_5.png}
+        \caption{Визуализация сигнала}
+        \label{fig:lab10_fig1_5}
+\end{figure}
+
+\begin{lstlisting}[caption=Избавление от нулевого отступа]
+violin.truncate(2**16)
+violin.plot()
+\end{lstlisting}
+
+\begin{figure}[H]
+        \centering
+        \includegraphics[width=0.75\textwidth]{lab10_fig1_6.png}
+        \caption{Визуализация сигнала}
+        \label{fig:lab10_fig1_6}
+\end{figure}
+
+Теперь мы можем сравнить с \texttt{np.convolve}:
+
+\begin{lstlisting}[caption=Объединение сигналов]
+output2 = violin.convolve(response)
+output2.plot()
+\end{lstlisting}
+
+\begin{figure}[H]
+        \centering
+        \includegraphics[width=0.75\textwidth]{lab10_fig1_7.png}
+        \caption{Визуализация сигнала}
+        \label{fig:lab10_fig1_7}
+\end{figure}
+
+Результаты максимально похожи.
+
+\begin{lstlisting}[caption=Прослушивание итогового сигнала]
+output2.make_audio()
+\end{lstlisting}
+
+Звук такой же, но длина не та.
+
+\begin{lstlisting}[caption=Сравнение длин сигналов]
+len(output), len(output2)
+\end{lstlisting}
+
+На выходе получились значения \texttt{(131072, 131071)}.
+
+\texttt{scipy.signal.fftconvolve} делает то же самое, но, как следует из названия, он использует ДПФ, поэтому он значительно быстрее:
+
+\begin{lstlisting}[caption=Изменение сигнала при помощи \texttt{scipy.signal.fftconvolve}]
+import scipy.signal
+ys = scipy.signal.fftconvolve(violin.ys, response.ys)
+output3 = thinkdsp.Wave(ys, framerate=violin.framerate)
+\end{lstlisting}
+
+\begin{lstlisting}[caption=Визуализация итогового сигнала]
+output3.plot()
+\end{lstlisting}
+
+\begin{figure}[H]
+        \centering
+        \includegraphics[width=0.75\textwidth]{lab10_fig1_8.png}
+        \caption{Визуализация итогового сигнала}
+        \label{fig:lab10_fig1_8}
+\end{figure}
+
+\begin{lstlisting}[caption=Прослушивание сигнала]
+output3.make_audio()
+\end{lstlisting}
+
+Результат тот же. В пределах ошибки с плавающей запятой результаты такие же:
+
+\begin{lstlisting}[caption=Сравнение результатов]
+output2.max_diff(output3)
+\end{lstlisting}
+
+Ошибка равна \texttt{2.1316282072803006e-14}.
+
+\chapter{Упражнение 10.2}
+
+В качестве импульсной характеристики взят за основу звук какой-то церкви из Великобритании. Звук можно скачать по \href{https://www.openair.hosted.york.ac.uk/?page_id=406}{\texttt{ссылке}}.
+
+\begin{lstlisting}[caption=Загрузка звука]
+response = thinkdsp.read_wave('mono_s1r1.wav')
+
+start = 0
+duration = 5
+response = response.segment(duration=duration)
+response.shift(-start)
+
+response.normalize()
+response.plot()
+thinkplot.config(xlabel='Time (s)', ylim=[-1.05, 1.05])
+\end{lstlisting}
+
+\begin{figure}[H]
+        \centering
+        \includegraphics[width=0.75\textwidth]{lab10_fig2_1.png}
+        \caption{Визуализация звука}
+        \label{fig:lab10_fig2_1}
+\end{figure}
+
+ДПФ импульсной характеристики - это передаточная функция:
+
+\begin{lstlisting}[caption=Спектр звука]
+transfer = response.make_spectrum()
+transfer.plot()
+thinkplot.config(xlabel='Frequency (Hz)', ylabel='Amplitude')
+\end{lstlisting}
+
+\begin{figure}[H]
+        \centering
+        \includegraphics[width=0.75\textwidth]{lab10_fig2_2.png}
+        \caption{Спектр звука}
+        \label{fig:lab10_fig2_2}
+\end{figure}
+
+Рассмотрим передаточную функцию в логарифмическом масштабе:
+
+\begin{lstlisting}[caption=Визуализация звука в логарифмическом масштабе]
+transfer.plot()
+thinkplot.config(xlabel='Frequency (Hz)', ylabel='Amplitude',
+                 xscale='log', yscale='log')
+\end{lstlisting}
+
+\begin{figure}[H]
+        \centering
+        \includegraphics[width=0.75\textwidth]{lab10_fig2_3.png}
+        \caption{Визуализация звука в логарифмическом масштабе}
+        \label{fig:lab10_fig2_3}
+\end{figure}
+
+Теперь мы можем смоделировать звучание записи, если бы её воспроизвели в одной комнате и записали бы таким же образом.
+
+Запись нам нужна той же частоты дискретизации, что и предыдущая, поэтому пришлось искать в интернете запись с 96 kHz. Запись можно скачать по \href{https://freesound.org/people/shakaharu/sounds/88498/}{\texttt{ссылке}}.
+
+\begin{lstlisting}[caption=Загрузка звука]
+wave = thinkdsp.read_wave('88498__shakaharu__ball-basketball-drop.wav')
+
+start = 0.0
+wave = wave.segment(start=start)
+wave.shift(-start)
+
+wave.truncate(len(response))
+wave.normalize()
+wave.plot()
+thinkplot.config(xlabel='Time (s)', ylim=[-1.05, 1.05])
+\end{lstlisting}
+
+\begin{figure}[H]
+        \centering
+        \includegraphics[width=0.75\textwidth]{lab10_fig2_4.png}
+        \caption{Визуализация звука}
+        \label{fig:lab10_fig2_4}
+\end{figure}
+
+Проверим частоту дискретизации.
+
+\begin{lstlisting}[caption=Частота дискретизации первого звука]
+#!pip install pydub
+from pydub import AudioSegment
+song = AudioSegment.from_mp3("mono_s1r1.wav")
+song.frame_rate
+\end{lstlisting}
+
+\begin{lstlisting}[caption=Частота дискретизации второго звука]
+song2 = AudioSegment.from_mp3("88498__shakaharu__ball-basketball-drop.wav")
+song2.frame_rate
+\end{lstlisting}
+
+Оба звука имеют частоту дискретизации 96000, что ожидаемо.
+
+Теперь мы вычисляем ДПФ записи скачущего баскетбольного мяча.
+
+\begin{lstlisting}[caption=Спектр звука]
+spectrum = wave.make_spectrum()
+\end{lstlisting}
+
+Обрежем запись скрипки до той же длины, что и импульсная характеристика:
+
+\begin{lstlisting}[caption=Длина записей]
+len(spectrum.hs), len(transfer.hs)
+\end{lstlisting}
+
+Длины совпадают и равны \texttt{(240001, 240001)}.
+
+\begin{lstlisting}[caption=Длина первой записи]
+spectrum.fs
+\end{lstlisting}
+
+\begin{lstlisting}[caption=Длина второй записи]
+transfer.fs
+\end{lstlisting}
+
+Массивы значений совпадают и равны \texttt{array([    0. ,     0.2,     0.4, ..., 47999.6, 47999.8, 48000. ])}.
+
+Мы можем умножить в частотной области и преобразовать обратно во временную область.
+
+\begin{lstlisting}[caption=Перемножение]
+output = (spectrum * transfer).make_wave()
+output.normalize()
+\end{lstlisting}
+
+Рассмотрим сравнение оригинальной и преобразованной записи:
+
+\begin{lstlisting}[caption=Визуализация оригинального звука]
+wave.plot()
+\end{lstlisting}
+
+\begin{figure}[H]
+        \centering
+        \includegraphics[width=0.75\textwidth]{lab10_fig2_5.png}
+        \caption{Визуализация оригинального звука}
+        \label{fig:lab10_fig2_5}
+\end{figure}
+
+\begin{lstlisting}[caption=Визуализация преображённого звука]
+output.plot()
+\end{lstlisting}
+
+\begin{figure}[H]
+        \centering
+        \includegraphics[width=0.75\textwidth]{lab10_fig2_6.png}
+        \caption{Визуализация преображённого звука}
+        \label{fig:lab10_fig2_6}
+\end{figure}
+
+Теперь, когда мы распознаем эту операцию как свёртку, мы можем вычислить ее с помощью метода \texttt{convolve}:
+
+\begin{lstlisting}[caption=Моделирование при помощи \texttt{convolve}]
+convolved2 = wave.convolve(response)
+convolved2.normalize()
+convolved2.make_audio()
+\end{lstlisting}
+
+\chapter{Выводы}
+
+Во время выполнения лабораторной работы получены навыки работы с теорией сигналов и систем, а также применения теоремы свёртки, характеризуя линейные, инвариантные во времени системы.
+
+\end{document}
